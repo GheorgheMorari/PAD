@@ -3,18 +3,19 @@ Repository for Programming Distribuited Applications course at university
 
 # Gateway
 # Routes
-/login
+- /login
 
-/getUserVal
-/setUserVal
-/sendFriendRequest
-/getUserUpdates
+- /getUserVal
+- /setUserVal
+- /sendFriendRequest
+- /getUserUpdates
 
-/sendMessage
-/getMessages
+- /sendMessage
+- /getMessages
 
-/discover
+- /discover
 # IO:
+
 ```
 Route: /login
 Input json format:
