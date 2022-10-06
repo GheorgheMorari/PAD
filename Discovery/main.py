@@ -24,6 +24,14 @@ def register():
     addressList.append(full_address)
     return "Ok"
 
+@app.route('/delete', methods=['POST'])
+def delete():
+    currentRequest = request
+    remote_addr = currentRequest.remote_addr
+    port = currentRequest.json["port"]
+    full_address = "http://" + remote_addr + ":" + str(port) + "/"
+    addressList.remove(full_address)
+    return "Removed"
 
 # TODO make the opposite of register that deletes the address from the addressList
 
