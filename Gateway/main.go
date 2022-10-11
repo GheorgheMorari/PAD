@@ -10,6 +10,9 @@ import (
 //- Message storage service
 //- Service discovery
 
+var globalClient http.Client
+var serviceTypeAddressMap map[string]ServiceStore
+
 func handle(w http.ResponseWriter, req *http.Request) {
 	//TODO parse request
 	//TODO choose necessary service
@@ -19,6 +22,9 @@ func handle(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+	serviceTypeAddressMap = make(map[string]ServiceStore)
+	discoveryCommMain()
+
 	http.HandleFunc("/", handle)
 	_ = http.ListenAndServe(":8090", nil)
 }
