@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -15,12 +16,12 @@ const UpdateServicesRoutine = false
 const UpdateServicesDelay = time.Second
 
 type DiscoveryServiceOutput struct {
-	serviceName string
-	fullAddress string
+	ServiceName string `json:"serviceName"`
+	FullAddress string `json:"fullAddress"`
 }
 
 func updateServices() {
-	serviceTypeAddressMap = make(map[string]ServiceStore)
+	serviceStoreMap = make(map[string]*ServiceStore)
 
 	request, newRequestErr := http.NewRequest(http.MethodPost, discoveryProtocol+discoveryHost+":"+discoveryPort+"/", nil)
 	if newRequestErr != nil {
@@ -40,12 +41,14 @@ func updateServices() {
 		panic("Could not parse discovery service response")
 	}
 	for _, serviceOutput := range serviceOutputs {
-		if serviceStore, ok := serviceTypeAddressMap[serviceOutput.serviceName]; ok {
-			serviceStore.services = append(serviceStore.services, serviceOutput.fullAddress)
+		if serviceStore, ok := serviceStoreMap[serviceOutput.ServiceName]; ok {
+			serviceStore.services = append(serviceStore.services, serviceOutput.FullAddress)
 		} else {
-			serviceTypeAddressMap[serviceOutput.serviceName] = ServiceStore{serviceName: serviceOutput.serviceName, services: []string{serviceOutput.fullAddress}}
+			serviceStoreMap[serviceOutput.ServiceName] = &ServiceStore{serviceName: serviceOutput.ServiceName, services: []string{serviceOutput.FullAddress}}
 		}
 	}
+	userStorageServiceStore = serviceStoreMap[userStorageServiceName]
+	//TODO add the other services
 }
 func updateServicesRoutine() {
 	for true {
@@ -54,7 +57,14 @@ func updateServicesRoutine() {
 	}
 }
 
+func discoveryHandler(w http.ResponseWriter, req *http.Request) {
+	updateServices()
+	fmt.Fprintf(w, "OK")
+}
+
 func discoveryCommMain() {
+	http.HandleFunc("/discover", discoveryHandler)
+
 	if UpdateServicesRoutine {
 		go updateServicesRoutine()
 	} else {
