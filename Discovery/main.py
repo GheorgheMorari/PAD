@@ -9,6 +9,9 @@ from requests import Response
 
 from Discovery.domain.models import Service, RegistrationService
 
+discoveryHost = "127.0.0.1"
+discoveryPort = 6969
+
 ray.init()
 services: List[Service] = []
 app = FastAPI()
@@ -31,7 +34,12 @@ def check_routine():
         time.sleep(1)
 
 
-@app.get('/check')
+@app.post("/")
+def main():
+    return services
+
+
+@app.post('/check')
 def check():
     pool = [send_post.remote(service.fullAddress) for service in services]  # Send all requests asynchronously
     responses = ray.get(pool)  # Block thread until all requests either time out or receive response
@@ -70,4 +78,4 @@ def register(request: Request, registration_service: RegistrationService):
 if __name__ == "__main__":
     if RUN_CHECK_ROUTINE:
         check_routine.remote()
-    uvicorn.run(app, host="0.0.0.0", port=6969)
+    uvicorn.run(app, host=discoveryHost, port=discoveryPort)
