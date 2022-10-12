@@ -1,8 +1,13 @@
 # PAD
+
 Repository for Programming Distribuited Applications course at university
 
 # Gateway
+
 # Routes
+
+- /register
+
 - /login
 
 - /getUserVal
@@ -14,23 +19,56 @@ Repository for Programming Distribuited Applications course at university
 - /getMessages
 
 - /discover
+
 # IO:
+
+```
+Route: /register
+Input json format:
+{
+    "email":"string",
+    "name":"string",
+    "password":"string",
+    "passwordConfirm":"string"
+}
+Output json format:
+
+status == 200:
+{
+  "status": "success",
+  "user": {
+    "name": "string",
+    "email": "string",
+    "role": "user",
+    "created_at": "2022-10-12T07:22:57.012000",
+    "updated_at": "2022-10-12T07:22:57.012000",
+    "id": "63466b5129b84965cfde61ba"
+  }
+}
+else: 
+{
+  "detail": "Account already exist"
+}
+```
 
 ```
 Route: /login
 Input json format:
 {
-    "login":"login",
+    "email":"string",
     "password":"password"
 }
 Output json format:
 
 status == 200:
 {
-    "userId":"userId",
-    "authToken":"authToken"
+  "status": "success",
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiI2MzQ2NmI1MTI5Yjg0OTY1Y2ZkZTYxYmEiLCJpYXQiOjE2NjU1NjI0NTYsIm5iZiI6MTY2NTU2MjQ1NiwianRpIjoiNGE4ODcxODEtYmU3My00ZmMwLThmZGYtMmM5ZjljMjJjNjA3IiwiZXhwIjoxNjY1NTYzMzU2LCJ0eXBlIjoiYWNjZXNzIiwiZnJlc2giOmZhbHNlfQ.J9lOuF_fv-vqSa4vOQpT4qxtRFTvVV72MZajIuYQbGoJwzG7znPUpnrvlC_Qtlf4QDFFAH9W1NyI91w2uIAWag"
 }
-else: no json output
+else: 
+{
+  "detail": "Incorrect Email or Password"
+}
 ```
 
 ```
@@ -143,7 +181,6 @@ else:
     "reason":"Invalid authToken"
 }
 ```
-
 
 ```
 Route: /discover
