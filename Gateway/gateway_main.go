@@ -24,21 +24,35 @@ var serviceStoreMap map[string]*ServiceStore
 
 func (serviceStore *ServiceStore) forward(w http.ResponseWriter, req *http.Request, entrypoint string) {
 	currentServiceAddress := serviceStore.addresses[0] // TODO choose service based on workload
+
 	request, newRequestErr := http.NewRequest(http.MethodPost, currentServiceAddress+entrypoint, req.Body)
 	if newRequestErr != nil {
 		http.Error(w, "Could not create new request for service:"+serviceStore.serviceName, http.StatusInternalServerError)
 		return
 	}
 	request.Header = req.Header.Clone()
+	for _, cookie := range req.Cookies() {
+		request.AddCookie(cookie)
+	}
 	response, doErr := globalClient.Do(request)
+
 	if doErr != nil {
 		http.Error(w, "Could not send request for service:"+serviceStore.serviceName, http.StatusInternalServerError)
-		return
+		panic(doErr)
 	}
+
+	response.Header.Clone()
 	w.Header().Set("Content-Type", response.Header.Get("Content-Type"))
 	w.Header().Set("Content-Length", response.Header.Get("Content-Length"))
-	_, _ = io.Copy(w, response.Body)
-	_ = response.Body.Close()
+	w.WriteHeader(response.StatusCode)
+	_, err := io.Copy(w, response.Body)
+	if err != nil {
+		panic(err)
+	}
+	err = response.Body.Close()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func main() {
@@ -46,7 +60,7 @@ func main() {
 	discoveryCommMain()
 	userStorageHandlingMain()
 
-	print("Starting server at port:" + gatewayPort)
+	println("Starting server at port:" + gatewayPort)
 	err := http.ListenAndServe(":"+gatewayPort, nil)
 	if err != nil {
 		panic(err)
