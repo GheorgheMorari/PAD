@@ -1,39 +1,81 @@
-from flask import Flask, jsonify, request
+import time
+from typing import List, Optional
+
+import ray
 import requests
+import uvicorn as uvicorn
+from fastapi import Request, FastAPI, HTTPException
+from requests import Response
 
-addressList = []
-app = Flask(__name__)
+from Discovery.domain.models import Service, RegistrationService
+
+discoveryHost = "127.0.0.1"
+discoveryPort = 6969
+
+ray.init()
+services: List[Service] = []
+app = FastAPI()
+
+RUN_CHECK_ROUTINE = False
 
 
-@app.route('/', methods=['GET', 'POST'])
+@ray.remote
+def send_post(address) -> Optional[Response]:
+    try:
+        return requests.post(address)
+    except:
+        return None
+
+
+@ray.remote
+def check_routine():
+    while True:
+        check()
+        time.sleep(1)
+
+
+@app.post("/")
 def main():
-    data = {}
-    for address in addressList:
-        # make a post request and save the response
-        response = requests.post(address)
-        data[address] = response.json()
-    return jsonify(data)
+    return services
 
 
-@app.route('/register', methods=['POST'])
-def register():
-    currentRequest = request
-    remote_addr = currentRequest.remote_addr
-    port = currentRequest.json["port"]  # TODO return status bad request 4hundredsumthin if request does not have a json
-    full_address = "http://" + remote_addr + ":" + str(port) + "/"
-    addressList.append(full_address)
-    return "Ok"
+@app.post('/check')
+def check():
+    pool = [send_post.remote(service.fullAddress) for service in services]  # Send all requests asynchronously
+    responses = ray.get(pool)  # Block thread until all requests either time out or receive response
 
-@app.route('/delete', methods=['POST'])
-def delete():
-    currentRequest = request
-    remote_addr = currentRequest.remote_addr
-    port = currentRequest.json["port"]
-    full_address = "http://" + remote_addr + ":" + str(port) + "/"
-    addressList.remove(full_address)
-    return "Removed"
+    offsets = 0
+    for i in range(len(responses)):  # Remove the services that did not connect or did not return 200
+        if not responses[i] or responses[i].status_code != 200:
+            del services[i - offsets]
+            offsets += 1
 
-# TODO make the opposite of register that deletes the address from the addressList
+    return services
+
+
+@app.post('/register')
+def register(request: Request, registration_service: RegistrationService):
+    service = Service(
+        fullAddress=f"http://{request.client.host if not registration_service.Host else registration_service.Host}:{registration_service.Port}/",
+        serviceName=registration_service.ServiceName)
+    if service in services:
+        raise HTTPException(status_code=409)  # Service already exists
+    else:
+        services.append(service)
+
+
+@app.post('/delete')
+def register(request: Request, registration_service: RegistrationService):
+    service = Service(
+        fullAddress=f"http://{request.client.host if not registration_service.Host else registration_service.Host}:{registration_service.Port}/",
+        serviceName=registration_service.ServiceName)
+    try:
+        services.remove(service)
+    except:
+        raise HTTPException(status_code=404)  # Service doesn't exist
+
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=6969)
+    if RUN_CHECK_ROUTINE:
+        check_routine.remote()
+    uvicorn.run(app, host=discoveryHost, port=discoveryPort)
