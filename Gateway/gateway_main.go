@@ -3,7 +3,14 @@ package main
 import (
 	"io"
 	"net/http"
+	"time"
 )
+
+const discoveryHost = "http://127.0.0.1"
+const discoveryPort = "6969"
+
+const UpdateServicesRoutine = true
+const UpdateServicesDelay = time.Second
 
 const gatewayPort = "8080"
 
@@ -22,6 +29,7 @@ func (serviceStore *ServiceStore) forward(w http.ResponseWriter, req *http.Reque
 		http.Error(w, "Could not create new request for service:"+serviceStore.serviceName, http.StatusInternalServerError)
 		return
 	}
+	request.Header = req.Header.Clone()
 	response, doErr := globalClient.Do(request)
 	if doErr != nil {
 		http.Error(w, "Could not send request for service:"+serviceStore.serviceName, http.StatusInternalServerError)
@@ -32,15 +40,6 @@ func (serviceStore *ServiceStore) forward(w http.ResponseWriter, req *http.Reque
 	_, _ = io.Copy(w, response.Body)
 	_ = response.Body.Close()
 }
-
-//func handle(w http.ResponseWriter, req *http.Request) {
-//	//TODO parse request
-//
-//	//TODO choose necessary service
-//	//TODO choose the least busy service provider
-//	//TODO send the request to that service
-//	//TODO respond with the response from the service provider
-//}
 
 func main() {
 	serviceStoreMap = make(map[string]*ServiceStore)
