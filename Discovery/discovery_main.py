@@ -1,26 +1,25 @@
+import threading
 import time
 from typing import List, Optional
 
-import ray
 import requests
-import uvicorn as uvicorn
-from fastapi import Request, FastAPI, HTTPException
+import uvicorn
+from fastapi import FastAPI, HTTPException, Request
 from requests import Response
 
 from Discovery.domain.models import Service, RegistrationService
 
 discoveryHost = "127.0.0.1"
 discoveryPort = 6969
-ray.init()
+
 services: List[Service] = []
 app = FastAPI()
 
 RUN_CHECK_ROUTINE = True
+CHECK_ROUTINE_DELAY_SECONDS = 5
 
-status_entrypoint = "status/"
+status_entrypoint = "status"
 
-
-@ray.remote
 def send_post(address) -> Optional[Response]:
     try:
         return requests.post(address)
@@ -28,11 +27,10 @@ def send_post(address) -> Optional[Response]:
         return None
 
 
-@ray.remote
 def check_routine():
     while True:
         check()
-        time.sleep(1)
+        time.sleep(CHECK_ROUTINE_DELAY_SECONDS)
 
 
 @app.post("/")
@@ -42,13 +40,14 @@ def main():
 
 @app.post('/check')
 def check():  # Check if the services are still running by pinging the status entrypoint
-    pool = [send_post.remote(service.fullAddress + status_entrypoint) for service in
-            services]  # Send all requests asynchronously
-    responses = ray.get(pool)  # Block thread until all requests either time out or receive response
+    responses = [send_post(service.fullAddress + status_entrypoint) for service in
+                 services]  # Send all requests synchronously
 
     offsets = 0
     for i in range(len(responses)):  # Remove the services that did not connect or did not return 200
         if not responses[i] or responses[i].status_code != 200:
+            print("removed service", services[i - offsets].serviceName, " at address: ",
+                  services[i - offsets].fullAddress)
             del services[i - offsets]
             offsets += 1
 
@@ -79,5 +78,6 @@ def register(request: Request, registration_service: RegistrationService):
 
 if __name__ == "__main__":
     if RUN_CHECK_ROUTINE:
-        check_routine.remote()
+        routine = threading.Thread(target=check_routine)
+        routine.start()
     uvicorn.run(app, host=discoveryHost, port=discoveryPort)
