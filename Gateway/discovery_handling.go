@@ -42,9 +42,9 @@ func updateServices() {
 	}
 	for _, serviceOutput := range serviceOutputs {
 		if serviceStore, ok := serviceStoreMap[serviceOutput.ServiceName]; ok {
-			serviceStore.services = append(serviceStore.services, serviceOutput.FullAddress)
+			serviceStore.addresses = append(serviceStore.addresses, serviceOutput.FullAddress)
 		} else {
-			serviceStoreMap[serviceOutput.ServiceName] = &ServiceStore{serviceName: serviceOutput.ServiceName, services: []string{serviceOutput.FullAddress}}
+			serviceStoreMap[serviceOutput.ServiceName] = &ServiceStore{serviceName: serviceOutput.ServiceName, addresses: []string{serviceOutput.FullAddress}}
 		}
 	}
 	userStorageServiceStore = serviceStoreMap[userStorageServiceName]

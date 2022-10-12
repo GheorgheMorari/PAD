@@ -8,16 +8,16 @@ import (
 const gatewayPort = "8080"
 
 type ServiceStore struct {
-	services    []string
+	addresses   []string
 	serviceName string
 }
 
 var globalClient http.Client
 var serviceStoreMap map[string]*ServiceStore
 
-func (serviceStore *ServiceStore) forward(w http.ResponseWriter, req *http.Request) {
-	currentService := serviceStore.services[0] // TODO choose service based on workload
-	request, newRequestErr := http.NewRequest(http.MethodPost, currentService, req.Body)
+func (serviceStore *ServiceStore) forward(w http.ResponseWriter, req *http.Request, entrypoint string) {
+	currentServiceAddress := serviceStore.addresses[0] // TODO choose service based on workload
+	request, newRequestErr := http.NewRequest(http.MethodPost, currentServiceAddress+entrypoint, req.Body)
 	if newRequestErr != nil {
 		http.Error(w, "Could not create new request for service:"+serviceStore.serviceName, http.StatusInternalServerError)
 		return
