@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 )
@@ -16,12 +17,13 @@ type DiscoveryServiceOutput struct {
 func updateServices() {
 	serviceStoreMap = make(map[string]*ServiceStore)
 
-	request, newRequestErr := http.NewRequest(http.MethodPost, discoveryHost+":"+discoveryPort+"/", nil)
+	request, newRequestErr := http.NewRequest(http.MethodPost, discoveryHost+":"+discoveryPort, nil)
 	if newRequestErr != nil {
 		panic("Could not create a request to discovery service")
 	}
 	response, doErr := globalClient.Do(request)
 	if doErr != nil {
+		log.Fatal(doErr)
 		panic("Could not sent request to discovery service")
 	}
 	var serviceOutputs []DiscoveryServiceOutput
@@ -41,6 +43,8 @@ func updateServices() {
 		}
 	}
 	userStorageServiceStore = serviceStoreMap[userStorageServiceName]
+	println("Services updated")
+
 	//TODO add the other services
 }
 func updateServicesRoutine() {
