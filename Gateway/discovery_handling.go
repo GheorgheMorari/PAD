@@ -42,7 +42,7 @@ func updateServices() {
 			serviceStoreMap[serviceOutput.ServiceName] = &ServiceStore{serviceName: serviceOutput.ServiceName, addresses: []string{serviceOutput.FullAddress}}
 		}
 	}
-	userStorageServiceStore = serviceStoreMap[userStorageServiceName]
+	authServiceStore = serviceStoreMap[authServiceName]
 	println("Services updated")
 
 	//TODO add the other services

@@ -58,7 +58,7 @@ func (serviceStore *ServiceStore) forward(w http.ResponseWriter, req *http.Reque
 func main() {
 	serviceStoreMap = make(map[string]*ServiceStore)
 	discoveryCommMain()
-	userStorageHandlingMain()
+	authServiceHandlingMain()
 
 	println("Starting server at port:" + gatewayPort)
 	err := http.ListenAndServe(":"+gatewayPort, nil)
