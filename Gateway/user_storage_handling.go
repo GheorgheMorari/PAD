@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-const userStorageServiceName = "UserStorage"
+const userStorageServiceName = "AuthService"
 
 var userStorageServiceStore *ServiceStore = nil
 

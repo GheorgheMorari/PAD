@@ -1,7 +1,7 @@
 import pymongo
 from pymongo import mongo_client
 
-from UserStorage.app.config import settings
+from AuthService.app.config import settings
 
 client = mongo_client.MongoClient(
     settings.DATABASE_URL, serverSelectionTimeoutMS=5000)

@@ -2,11 +2,11 @@ from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 from fastapi import APIRouter, Response, status, Depends, HTTPException
 
-from UserStorage.app import oauth2
-from UserStorage.app.database import User
-from UserStorage.app.serializers.userSerializers import userEntity, userResponseEntity
+from AuthService.app import oauth2
+from AuthService.app.database import User
+from AuthService.app.serializers.userSerializers import userEntity, userResponseEntity
 from .. import schemas, utils
-from UserStorage.app.oauth2 import AuthJWT
+from AuthService.app.oauth2 import AuthJWT
 from ..config import settings
 
 
