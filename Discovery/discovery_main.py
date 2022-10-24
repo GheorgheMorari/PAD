@@ -15,7 +15,7 @@ discoveryPort = 6969
 services: List[Service] = []
 app = FastAPI()
 
-RUN_CHECK_ROUTINE = True
+RUN_CHECK_ROUTINE = False
 CHECK_ROUTINE_DELAY_SECONDS = 5
 
 status_entrypoint = "status"
