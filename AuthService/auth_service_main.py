@@ -14,7 +14,7 @@ discovery_service_address = "http://127.0.0.1:6969/"
 status_data = {
     "ServiceName": "AuthService",
     "Port": str(auth_service_port),
-    "Host": auth_service_host
+    # "Host": auth_service_host
 }
 
 origins = [
@@ -39,9 +39,7 @@ def root():
 
 
 if __name__ == "__main__":
-    response = requests.post(discovery_service_address + "register", json={"ServiceName": "AuthService",
-                                                                           "Port": str(auth_service_port),
-                                                                           "Host": auth_service_host})
+    response = requests.post(discovery_service_address + "register", json=status_data)
     if response.status_code != 200:
         raise Exception("Discovery service unavailable")
     print("Registration successful")
