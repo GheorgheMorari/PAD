@@ -41,7 +41,7 @@ def main():
 @app.post('/check')
 def check():  # Check if the services are still running by pinging the status entrypoint
     responses = [send_post(service.fullAddress + status_entrypoint) for service in
-                 services]  # Send all requests synchronously
+                 services]  # Send all requests one after another
 
     offsets = 0
     for i in range(len(responses)):  # Remove the services that did not connect or did not return 200
@@ -66,7 +66,7 @@ def register(request: Request, registration_service: RegistrationService):
 
 
 @app.post('/delete')
-def register(request: Request, registration_service: RegistrationService):
+def delete(request: Request, registration_service: RegistrationService):
     service = Service(
         fullAddress=f"http://{request.client.host if not registration_service.Host else registration_service.Host}:{registration_service.Port}/",
         serviceName=registration_service.ServiceName)
