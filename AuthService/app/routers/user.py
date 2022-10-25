@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 from bson.objectid import ObjectId
-from UserStorage.app.serializers.userSerializers import userResponseEntity
+from AuthService.app.serializers.userSerializers import userResponseEntity
 
-from UserStorage.app.database import User
+from AuthService.app.database import User
 from .. import schemas, oauth2
 
 router = APIRouter()

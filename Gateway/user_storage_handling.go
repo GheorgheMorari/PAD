@@ -4,27 +4,27 @@ import (
 	"net/http"
 )
 
-const userStorageServiceName = "UserStorage"
+const authServiceName = "AuthService"
 
-var userStorageServiceStore *ServiceStore = nil
+var authServiceStore *ServiceStore = nil
 
-type UserStorageServiceEntrypoint struct {
+type AuthServiceEntrypoint struct {
 	entrypoint string
 }
 
-func (userStorageEntrypoint UserStorageServiceEntrypoint) userStorageServiceFw(w http.ResponseWriter, req *http.Request) {
-	if userStorageServiceStore == nil {
-		http.Error(w, "User storage service store is unavailable", http.StatusInternalServerError)
+func (authServiceEntrypoint AuthServiceEntrypoint) authServiceFw(w http.ResponseWriter, req *http.Request) {
+	if authServiceStore == nil {
+		http.Error(w, "Auth service store is unavailable", http.StatusInternalServerError)
 		return
 	}
-	userStorageServiceStore.forward(w, req, userStorageEntrypoint.entrypoint)
-	println("Forwarded to " + userStorageEntrypoint.entrypoint)
+	authServiceStore.forward(w, req, authServiceEntrypoint.entrypoint)
+	println("Forwarded to " + authServiceEntrypoint.entrypoint)
 }
 
-func userStorageHandlingMain() {
-	http.HandleFunc("/login", UserStorageServiceEntrypoint{"api/auth/login"}.userStorageServiceFw)
-	http.HandleFunc("/register", UserStorageServiceEntrypoint{"api/auth/register"}.userStorageServiceFw)
-	http.HandleFunc("/refresh", UserStorageServiceEntrypoint{"api/auth/refresh"}.userStorageServiceFw)
-	http.HandleFunc("/logout", UserStorageServiceEntrypoint{"api/auth/logout"}.userStorageServiceFw)
-	http.HandleFunc("/me", UserStorageServiceEntrypoint{"api/users/me"}.userStorageServiceFw)
+func authServiceHandlingMain() {
+	http.HandleFunc("/login", AuthServiceEntrypoint{"api/auth/login"}.authServiceFw)
+	http.HandleFunc("/register", AuthServiceEntrypoint{"api/auth/register"}.authServiceFw)
+	http.HandleFunc("/refresh", AuthServiceEntrypoint{"api/auth/refresh"}.authServiceFw)
+	http.HandleFunc("/logout", AuthServiceEntrypoint{"api/auth/logout"}.authServiceFw)
+	http.HandleFunc("/me", AuthServiceEntrypoint{"api/users/me"}.authServiceFw)
 }

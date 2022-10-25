@@ -6,7 +6,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi_jwt_auth import AuthJWT
 from pydantic import BaseModel
 
-from UserStorage.app.serializers.userSerializers import userEntity
+from AuthService.app.serializers.userSerializers import userEntity
 from .config import settings
 from .database import User
 

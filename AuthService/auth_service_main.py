@@ -7,14 +7,14 @@ from app.config import settings
 from app.routers import auth, user
 
 app = FastAPI()
-user_storage_host = "127.0.0.1"
-user_storage_port = 8081
+auth_service_host = "127.0.0.1"
+auth_service_port = 8081
 discovery_service_address = "http://127.0.0.1:6969/"
 
 status_data = {
-    "ServiceName": "UserStorage",
-    "Port": str(user_storage_port),
-    "Host": user_storage_host
+    "ServiceName": "AuthService",
+    "Port": str(auth_service_port),
+    # "Host": auth_service_host
 }
 
 origins = [
@@ -39,10 +39,8 @@ def root():
 
 
 if __name__ == "__main__":
-    response = requests.post(discovery_service_address + "register", json={"ServiceName": "UserStorage",
-                                                                           "Port": str(user_storage_port),
-                                                                           "Host": user_storage_host})
+    response = requests.post(discovery_service_address + "register", json=status_data)
     if response.status_code != 200:
         raise Exception("Discovery service unavailable")
     print("Registration successful")
-    uvicorn.run(app, host=user_storage_host, port=user_storage_port)
+    uvicorn.run(app, host=auth_service_host, port=auth_service_port)

@@ -9,8 +9,8 @@ import (
 const discoveryHost = "http://127.0.0.1"
 const discoveryPort = "6969"
 
-const UpdateServicesRoutine = true
-const UpdateServicesDelay = time.Second
+const UpdateServicesRoutine = false
+const UpdateServicesDelay = 5 * time.Second
 
 const gatewayPort = "8080"
 
@@ -58,7 +58,7 @@ func (serviceStore *ServiceStore) forward(w http.ResponseWriter, req *http.Reque
 func main() {
 	serviceStoreMap = make(map[string]*ServiceStore)
 	discoveryCommMain()
-	userStorageHandlingMain()
+	authServiceHandlingMain()
 
 	println("Starting server at port:" + gatewayPort)
 	err := http.ListenAndServe(":"+gatewayPort, nil)

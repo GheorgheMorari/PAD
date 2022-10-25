@@ -6,7 +6,7 @@ from pydantic import BaseModel, EmailStr, constr
 
 class UserBaseSchema(BaseModel):
     name: str
-    email: str
+    email: EmailStr
     # photo: str
     role: Optional[str] = None
     created_at: Optional[datetime] = None
