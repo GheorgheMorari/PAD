@@ -55,7 +55,12 @@ class DiscoveryServiceComm:
         response = requests.post(self.discovery_service_address)
 
         ret = []
-        response_list = response.json()
+
+        try:
+            response_list = response.json()
+        except:
+            response_list = None
+
         if response_list is not None:
             ret = list(filter(lambda service: service["serviceName"] == service_name, response_list))
 
