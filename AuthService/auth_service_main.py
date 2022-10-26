@@ -1,21 +1,16 @@
-import requests
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from AuthServiceUtils.auth_comm import AUTH_SERVICE_NAME
+from DiscoveryServiceUtils.discovery_comm import DiscoveryServiceComm
 from app.config import settings
 from app.routers import auth, user
 
 app = FastAPI()
-auth_service_host = "127.0.0.1"
-auth_service_port = 8081
-discovery_service_address = "http://127.0.0.1:6969/"
-
-status_data = {
-    "ServiceName": "AuthService",
-    "Port": str(auth_service_port),
-    # "Host": auth_service_host
-}
+AUTH_SERVICE_HOST = "127.0.0.1"
+AUTH_SERVICE_PORT = 8081
+AUTH_DISCOVERY = DiscoveryServiceComm(service_name=AUTH_SERVICE_NAME, port=str(AUTH_SERVICE_PORT))
 
 origins = [
     settings.CLIENT_ORIGIN,
@@ -35,12 +30,15 @@ app.include_router(user.router, tags=['Users'], prefix='/api/users')
 
 @app.post("/status")
 def root():
-    return status_data
+    return AUTH_DISCOVERY.get_status_data()
 
 
 if __name__ == "__main__":
-    response = requests.post(discovery_service_address + "register", json=status_data)
-    if response.status_code != 200:
+    if not AUTH_DISCOVERY.check_connection():
         raise Exception("Discovery service unavailable")
+
+    if not AUTH_DISCOVERY.register_force():
+        raise Exception(f"Registration unsuccessful, Status code:{AUTH_DISCOVERY.get_status_code()}")
     print("Registration successful")
-    uvicorn.run(app, host=auth_service_host, port=auth_service_port)
+
+    uvicorn.run(app, host=AUTH_SERVICE_HOST, port=AUTH_SERVICE_PORT)
