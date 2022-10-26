@@ -8,17 +8,19 @@ from fastapi import FastAPI, HTTPException, Request
 from requests import Response
 
 from Discovery.domain.models import Service, RegistrationService
+from DiscoveryServiceUtils.discovery_comm import DEFAULT_DISCOVERY_SERVICE_PORT, DEFAULT_DISCOVERY_SERVICE_HOST
 
-discoveryHost = "127.0.0.1"
-discoveryPort = 6969
+# Constants
+DISCOVERY_HOST = DEFAULT_DISCOVERY_SERVICE_HOST
+DISCOVERY_PORT = DEFAULT_DISCOVERY_SERVICE_PORT
+RUN_CHECK_ROUTINE = False
+CHECK_ROUTINE_DELAY_SECONDS = 5
+STATUS_ENTRYPOINT_NAME = "status"
 
+# Global variables
 services: List[Service] = []
 app = FastAPI()
 
-RUN_CHECK_ROUTINE = False
-CHECK_ROUTINE_DELAY_SECONDS = 5
-
-status_entrypoint = "status"
 
 def send_post(address) -> Optional[Response]:
     try:
@@ -40,7 +42,7 @@ def main():
 
 @app.post('/check')
 def check():  # Check if the services are still running by pinging the status entrypoint
-    responses = [send_post(service.fullAddress + status_entrypoint) for service in
+    responses = [send_post(service.fullAddress + STATUS_ENTRYPOINT_NAME) for service in
                  services]  # Send all requests one after another
 
     offsets = 0
@@ -80,4 +82,4 @@ if __name__ == "__main__":
     if RUN_CHECK_ROUTINE:
         routine = threading.Thread(target=check_routine)
         routine.start()
-    uvicorn.run(app, host=discoveryHost, port=discoveryPort)
+    uvicorn.run(app, host=DISCOVERY_HOST, port=DISCOVERY_PORT)

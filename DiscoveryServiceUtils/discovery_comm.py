@@ -2,10 +2,14 @@ from typing import Optional, List, TypedDict
 
 import requests
 
+DEFAULT_DISCOVERY_SERVICE_HOST = "127.0.0.1"
+DEFAULT_DISCOVERY_SERVICE_PORT = 6969
+DEFAULT_DISCOVERY_SERVICE_ADDRESS = F"http://{DEFAULT_DISCOVERY_SERVICE_HOST}:{DEFAULT_DISCOVERY_SERVICE_PORT}/"
+
 
 class DiscoveryServiceComm:
     def __init__(self, port: str, service_name: str, host: Optional[str] = None,
-                 discovery_service_address="http://127.0.0.1:6969/"):
+                 discovery_service_address=DEFAULT_DISCOVERY_SERVICE_ADDRESS):
         self.host = host
         self.port = port
         self.discovery_service_address = discovery_service_address
@@ -19,7 +23,10 @@ class DiscoveryServiceComm:
         self.status_code = 0
 
     def check_connection(self) -> bool:
-        response = requests.post(self.discovery_service_address)
+        try:
+            response = requests.post(self.discovery_service_address)
+        except:
+            return False
         self.status_code = response.status_code
         return response.status_code == 200
 
