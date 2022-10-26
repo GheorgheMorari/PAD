@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 
+import requests
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Request
 from sqlalchemy.orm import Session
@@ -30,10 +31,40 @@ def get_db():
         db.close()
 
 
+toxicity_services = []
+spellchecker_services = []
+spellchecker_index = 0
+toxicity_index = 0
+
+
 @app.post("/messages", response_model=schemas.DbMessage)
 def create_message(request: Request, input_message: InputMessage, db: Session = Depends(get_db)):
+    global toxicity_index
+    global spellchecker_index
     if MESSAGING_AUTH.check_auth_token(request):
         message = Message(sender=MESSAGING_AUTH.user_id, **input_message.dict())
+
+        spellchecker_index += 1
+        spellchecker_index %= len(spellchecker_services)
+
+        response = requests.post(spellchecker_services[spellchecker_index]["fullAddress"],
+                                 json={"text": message.content})
+        if not (response.status_code == 200):
+            HTTPException(status_code=500, detail="Could not connect with spellchecker service")
+        corrected_content = response.json()["corrected_content"]
+
+        toxicity_index += 1
+        toxicity_index %= len(toxicity_services)
+
+        response = requests.post(toxicity_services[toxicity_index]["fullAddress"],
+                                 json={"text": corrected_content})
+        if not (response.status_code == 200):
+            HTTPException(status_code=500, detail="Could not connect with toxicity detection service")
+        toxicity = response.json()["toxic"]
+
+        if toxicity >= 0.5:
+            raise HTTPException(status_code=403, detail="Message too toxic")
+
         return crud.create_message(db=db, message=message)
     raise HTTPException(status_code=403, detail="Invalid bearer auth token")
 
@@ -74,5 +105,8 @@ if __name__ == "__main__":
     if not MESSAGING_AUTH.connect(auth_service_list[0]["fullAddress"]):
         raise Exception(f"Could not connect to auth service at:{auth_service_list[0]['fullAddress']}")
     print("Connection to auth service established")
+
+    toxicity_services = MESSAGING_DISCOVERY.get_service_addresses("ToxicityDetectionService")
+    spellchecker_services = MESSAGING_DISCOVERY.get_service_addresses("SpellcheckerService")
 
     uvicorn.run(app, host=MESSAGING_SERVICE_HOST, port=MESSAGING_SERVICE_PORT)
