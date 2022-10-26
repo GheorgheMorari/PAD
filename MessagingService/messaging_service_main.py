@@ -5,6 +5,7 @@ import uvicorn
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
+from AuthServiceUtils.auth_comm import AUTH_SERVICE_NAME, AuthServiceComm
 from DiscoveryServiceUtils.discovery_comm import DiscoveryServiceComm
 from MessagingService.models import schemas
 from sql_app import crud, models, database
@@ -16,6 +17,7 @@ MESSAGING_SERVICE_HOST = "127.0.0.1"
 MESSAGING_SERVICE_PORT = 8069
 MESSAGING_SERVICE_NAME = "MessagingService"
 MESSAGING_DISCOVERY = DiscoveryServiceComm(service_name=MESSAGING_SERVICE_NAME, port=str(MESSAGING_SERVICE_PORT))
+MESSAGING_AUTH = AuthServiceComm()
 
 
 # Dependency
@@ -61,6 +63,14 @@ if __name__ == "__main__":
 
     if not MESSAGING_DISCOVERY.register_force():
         raise Exception(f"Registration unsuccessful, Status code:{MESSAGING_DISCOVERY.get_status_code()}")
-
     print("Registration successful")
+
+    auth_service_list = MESSAGING_DISCOVERY.get_service_addresses(AUTH_SERVICE_NAME)
+    if len(auth_service_list) == 0:
+        raise Exception("No auth service was registered")
+
+    if not MESSAGING_AUTH.connect(auth_service_list[0]["fullAddress"]):
+        raise Exception(f"Could not connect to auth service at:{auth_service_list[0]['fullAddress']}")
+    print("Connection to auth service established")
+
     uvicorn.run(app, host=MESSAGING_SERVICE_HOST, port=MESSAGING_SERVICE_PORT)
