@@ -1,13 +1,14 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from AuthServiceUtils.auth_comm import AUTH_SERVICE_NAME, AuthServiceComm
 from DiscoveryServiceUtils.discovery_comm import DiscoveryServiceComm
 from MessagingService.models import schemas
+from MessagingService.models.schemas import InputMessage, Message
 from sql_app import crud, models, database
 
 models.Base.metadata.create_all(bind=database.engine)
@@ -30,22 +31,23 @@ def get_db():
 
 
 @app.post("/messages", response_model=schemas.DbMessage)
-def create_message(message: schemas.Message, db: Session = Depends(get_db)):
-    return crud.create_message(db=db, message=message)
+def create_message(request: Request, input_message: InputMessage, db: Session = Depends(get_db)):
+    if MESSAGING_AUTH.check_auth_token(request):
+        message = Message(sender=MESSAGING_AUTH.user_id, **input_message.dict())
+        return crud.create_message(db=db, message=message)
+    raise HTTPException(status_code=403, detail="Invalid bearer auth token")
 
 
-@app.get("/messages", response_model=schemas.DbMessage)
-def get_message(message_id: int, db: Session = Depends(get_db)):
-    db_message = crud.get_message(db=db, message_id=message_id)
-    if db_message is None:
-        raise HTTPException(status_code=404, detail="Message not found")
-    return db_message
-
-
-@app.get("/messages/timestamp", response_model=List[schemas.DbMessage])
-def get_message(participant_id: str, timestamp_from: datetime, timestamp_to: datetime = datetime.now(),
+@app.get("/messages", response_model=List[schemas.DbMessage])
+def get_message(request: Request, timestamp_from: datetime, timestamp_to: Optional[datetime] = None,
                 db: Session = Depends(get_db)):
-    messages = crud.get_messages_by_timestamp(db=db, participant_id=participant_id, timestamp_from=timestamp_from,
+    if not MESSAGING_AUTH.check_auth_token(request):
+        raise HTTPException(status_code=403, detail="Invalid bearer auth token")
+
+    if timestamp_to is None:
+        timestamp_to = datetime.now()
+    messages = crud.get_messages_by_timestamp(db=db, participant_id=MESSAGING_AUTH.user_id,
+                                              timestamp_from=timestamp_from,
                                               timestamp_to=timestamp_to)
     if len(messages) == 0:
         raise HTTPException(status_code=404, detail="No messages were not found")

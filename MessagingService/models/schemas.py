@@ -8,11 +8,14 @@ class AuthToken(BaseModel):
     auth_token: str
 
 
-class Message(BaseModel):
-    sender: str
+class InputMessage(BaseModel):
     receiver: str
-    timestamp: datetime = Field(default_factory=datetime.now)
     content: str
+
+
+class Message(InputMessage):
+    sender: str
+    timestamp: datetime = Field(default_factory=datetime.now)
 
     class Config:
         orm_mode = True
