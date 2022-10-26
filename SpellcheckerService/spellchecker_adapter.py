@@ -5,7 +5,7 @@ from spellchecker import SpellChecker
 SPELLCHECKER_INSTANCE = SpellChecker()
 
 
-def predict(text: str) -> dict:
+def predict_misspelling(text: str) -> dict:
     tokens = list(filter(None, re.split(r"[\s.,!?:;-]+", text)))
     unique_tokens = set(tokens)
     candidates_list = [(SPELLCHECKER_INSTANCE.candidates(token), token) for token in tokens]

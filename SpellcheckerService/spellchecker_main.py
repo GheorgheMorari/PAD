@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from DiscoveryServiceUtils.discovery_comm import DiscoveryServiceComm
-from SpellcheckerService.spellchecker_adapter import predict
+from SpellcheckerService.spellchecker_adapter import predict_misspelling
 
 app = FastAPI()
 SPELLCHECKER_SERVICE_HOST = "127.0.0.1"
@@ -19,7 +19,7 @@ class Message(BaseModel):
 
 @app.post("/")
 def main(message: Message):
-    return predict(message.text)
+    return predict_misspelling(message.text)
 
 
 @app.post("/status")
