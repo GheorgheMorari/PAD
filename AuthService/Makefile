@@ -1,5 +1,5 @@
-dev:
+start_mongo:
 	docker-compose up -d
 
-dev-down:
+stop_mongo:
 	docker-compose down
