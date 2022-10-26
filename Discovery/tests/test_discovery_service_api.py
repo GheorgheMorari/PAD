@@ -75,4 +75,3 @@ class TestDiscoveryServiceApi(TestCase):
                                                      ServiceName=f"Testservice{x}"))
 
         self.test_register_and_delete_entrypoint(test_services)
-

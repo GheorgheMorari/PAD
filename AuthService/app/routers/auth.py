@@ -1,14 +1,14 @@
 from datetime import datetime, timedelta
+
 from bson.objectid import ObjectId
 from fastapi import APIRouter, Response, status, Depends, HTTPException
 
 from AuthService.app import oauth2
 from AuthService.app.database import User
+from AuthService.app.oauth2 import AuthJWT
 from AuthService.app.serializers.userSerializers import userEntity, userResponseEntity
 from .. import schemas, utils
-from AuthService.app.oauth2 import AuthJWT
 from ..config import settings
-
 
 router = APIRouter()
 ACCESS_TOKEN_EXPIRES_IN = settings.ACCESS_TOKEN_EXPIRES_IN
