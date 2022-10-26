@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List, TypedDict
 
 import requests
 
@@ -49,3 +49,14 @@ class DiscoveryServiceComm:
 
     def get_status_data(self) -> dict:
         return self.status_data
+
+    def get_service_addresses(self, service_name: str) -> List[
+        TypedDict("Service", {"serviceName": str, "fullAddress": str})]:
+        response = requests.post(self.discovery_service_address)
+
+        ret = []
+        response_list = response.json()
+        if response_list is not None:
+            ret = list(filter(lambda service: service["serviceName"] == service_name, response_list))
+
+        return ret
