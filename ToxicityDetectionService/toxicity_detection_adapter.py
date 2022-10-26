@@ -7,4 +7,7 @@ TOXICITY_DETECTION_MODEL = pipeline('text-classification', model=TOXICITY_DETECT
 
 def predict_toxicity(text: str) -> dict:
     results_list = TOXICITY_DETECTION_MODEL({"text": text}, top_k=6)
-    return results_list
+    results = {}
+    for result in results_list:
+        results[result['label']] = result['score']
+    return results
