@@ -10,7 +10,7 @@ TOXICITY_DETECTION_SERVICE_HOST = "127.0.0.1"
 TOXICITY_DETECTION_SERVICE_PORT = 8083
 TOXICITY_DETECTION_SERVICE_NAME = "ToxicityDetectionService"
 TOXICITY_DETECTION_DISCOVERY = DiscoveryServiceComm(service_name=TOXICITY_DETECTION_SERVICE_NAME,
-                                              port=str(TOXICITY_DETECTION_SERVICE_PORT))
+                                                    port=str(TOXICITY_DETECTION_SERVICE_PORT))
 
 
 class Message(BaseModel):
