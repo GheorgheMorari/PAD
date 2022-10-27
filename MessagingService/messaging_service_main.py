@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from typing import List, Optional
 
@@ -33,6 +34,7 @@ def get_db():
 
 toxicity_services = []
 spellchecker_services = []
+cache_services = []
 spellchecker_index = 0
 toxicity_index = 0
 
@@ -94,8 +96,9 @@ def create_message(request: Request, input_message: InputMessage, db: Session = 
 
         if check_if_toxic(message.content):
             raise HTTPException(status_code=403, detail="Message too toxic")
-
-        return crud.create_message(db=db, message=message)
+        db_message = crud.create_message(db=db, message=message)
+        store_message_to_cache(schemas.DbMessage(id=db_message.id, **message.dict()))
+        return db_message
     raise HTTPException(status_code=403, detail="Invalid bearer auth token")
 
 
@@ -107,6 +110,13 @@ def get_message(request: Request, timestamp_from: datetime, timestamp_to: Option
 
     if timestamp_to is None:
         timestamp_to = datetime.now()
+
+    # Check cache
+    cache_messages = get_messages_from_cache(participant=MESSAGING_AUTH.user_id, timestamp_from=timestamp_from,
+                                             timestamp_to=timestamp_to)
+    if len(cache_messages) != 0:
+        return cache_messages
+
     messages = crud.get_messages_by_timestamp(db=db, participant_id=MESSAGING_AUTH.user_id,
                                               timestamp_from=timestamp_from,
                                               timestamp_to=timestamp_to)
@@ -120,12 +130,65 @@ def root():
     return MESSAGING_DISCOVERY.get_status_data()
 
 
-@app.post("/update")
 def update():
     global toxicity_services
     global spellchecker_services
+    global cache_services
+
     toxicity_services = MESSAGING_DISCOVERY.get_service_addresses("ToxicityDetectionService")
     spellchecker_services = MESSAGING_DISCOVERY.get_service_addresses("SpellcheckerService")
+    cache_services = MESSAGING_DISCOVERY.get_service_addresses("CacheService")
+
+
+def store_message_to_cache(message: schemas.DbMessage):
+    if len(cache_services) == 0:
+        update()
+        if len(cache_services) == 0:
+            return
+
+    try:
+        response = requests.post(cache_services[0]["fullAddress"],
+                                 data=f'store<__-__>{json.dumps(message.dict(), default=str)}')
+    except requests.exceptions.RequestException:
+        update()
+        try:
+            response = requests.post(cache_services[0]["fullAddress"],
+                                     data=f'store<__-__>{json.dumps(message.dict(), default=str)}')
+        except requests.exceptions.RequestException:
+            return
+    #
+    # if not (response.status_code == 200):
+    #     return
+
+
+def get_messages_from_cache(participant: str, timestamp_from: datetime, timestamp_to: datetime) -> List[
+    schemas.DbMessage]:
+    if len(cache_services) == 0:
+        update()
+        if len(cache_services) == 0:
+            return []
+            # raise HTTPException(status_code=500, detail="Could not connect with cache service")
+    try:
+        response = requests.post(cache_services[0]["fullAddress"],
+                                 data=f'get<__-__>{json.dumps({"participant": participant, "timestamp_from": str(timestamp_from), "timestamp_to": str(timestamp_to)})}')
+    except requests.exceptions.RequestException:
+        update()
+        try:
+            response = requests.post(cache_services[0]["fullAddress"],
+                                     data=f'get<__-__>{json.dumps({"participant": participant, "timestamp_from": str(timestamp_from), "timestamp_to": str(timestamp_to)})}')
+        except requests.exceptions.RequestException:
+            return []
+
+    if not (response.status_code == 200):
+        return []
+    response_dict_list = response.json()
+
+    ret = []
+    for response_dict in response_dict_list:
+        response_dict.pop("expire_time", None)
+        ret.append(schemas.DbMessage(**response_dict))
+
+    return ret
 
 
 if __name__ == "__main__":
