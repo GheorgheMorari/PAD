@@ -43,9 +43,8 @@ func updateServices() {
 		}
 	}
 	authServiceStore = serviceStoreMap[authServiceName]
+	messagingServiceStore = serviceStoreMap[messagingServiceName]
 	println("Services updated")
-
-	//TODO add the other services
 }
 func updateServicesRoutine() {
 	for true {

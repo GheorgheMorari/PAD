@@ -31,6 +31,7 @@ func (serviceStore *ServiceStore) forward(w http.ResponseWriter, req *http.Reque
 		return
 	}
 	request.Header = req.Header.Clone()
+	request.URL.RawQuery = req.URL.RawQuery
 	for _, cookie := range req.Cookies() {
 		request.AddCookie(cookie)
 	}
@@ -59,6 +60,7 @@ func main() {
 	serviceStoreMap = make(map[string]*ServiceStore)
 	discoveryCommMain()
 	authServiceHandlingMain()
+	messagingServiceHandlingMain()
 
 	println("Starting server at port:" + gatewayPort)
 	err := http.ListenAndServe(":"+gatewayPort, nil)
