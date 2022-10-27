@@ -13,7 +13,7 @@ from DiscoveryServiceUtils.discovery_comm import DEFAULT_DISCOVERY_SERVICE_PORT,
 # Constants
 DISCOVERY_HOST = DEFAULT_DISCOVERY_SERVICE_HOST
 DISCOVERY_PORT = DEFAULT_DISCOVERY_SERVICE_PORT
-RUN_CHECK_ROUTINE = False
+RUN_CHECK_ROUTINE = True
 CHECK_ROUTINE_DELAY_SECONDS = 5
 STATUS_ENTRYPOINT_NAME = "status"
 
@@ -25,14 +25,15 @@ app = FastAPI()
 def send_post(address) -> Optional[Response]:
     try:
         return requests.post(address)
-    except:
+    except requests.exceptions.RequestException:
         return None
 
 
 def check_routine():
-    while True:
-        check()
+    check()
+    while RUN_CHECK_ROUTINE:
         time.sleep(CHECK_ROUTINE_DELAY_SECONDS)
+        check()
 
 
 @app.post("/")
@@ -79,7 +80,8 @@ def delete(request: Request, registration_service: RegistrationService):
 
 
 if __name__ == "__main__":
-    if RUN_CHECK_ROUTINE:
-        routine = threading.Thread(target=check_routine)
-        routine.start()
+    routine = threading.Thread(target=check_routine)
+    routine.daemon = True
+    routine.start()
+
     uvicorn.run(app, host=DISCOVERY_HOST, port=DISCOVERY_PORT)
