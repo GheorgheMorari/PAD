@@ -37,39 +37,69 @@ spellchecker_index = 0
 toxicity_index = 0
 
 
-@app.post("/messages", response_model=schemas.DbMessage)
-def create_message(request: Request, input_message: InputMessage, db: Session = Depends(get_db)):
+def check_if_toxic(text: str, threshold: float = 0.5) -> bool:
     global toxicity_index
     global spellchecker_index
+    if len(spellchecker_services) == 0:
+        update()
+        if len(spellchecker_services) == 0:
+            raise HTTPException(status_code=500, detail="Could not connect with spellchecker service")
+    if len(toxicity_services) == 0:
+        update()
+        if len(toxicity_services) == 0:
+            raise HTTPException(status_code=500, detail="Could not connect with toxicity detection service")
+
+    try:
+        response = requests.post(spellchecker_services[spellchecker_index]["fullAddress"],
+                                 json={"text": text})
+    except requests.exceptions.RequestException:
+        update()
+        try:
+            response = requests.post(spellchecker_services[spellchecker_index]["fullAddress"],
+                                     json={"text": text})
+        except requests.exceptions.RequestException:
+            raise HTTPException(status_code=500, detail="Could not connect with spellchecker service")
+
+    spellchecker_index += 1
+    spellchecker_index %= len(spellchecker_services)
+    if not (response.status_code == 200):
+        HTTPException(status_code=500, detail="Could not connect with spellchecker service")
+
+    corrected_content = response.json()["corrected_content"]
+
+    toxicity_index += 1
+    toxicity_index %= len(toxicity_services)
+
+    try:
+        response = requests.post(toxicity_services[toxicity_index]["fullAddress"],
+                                 json={"text": corrected_content})
+    except requests.exceptions.RequestException:
+        update()
+        try:
+            response = requests.post(toxicity_services[toxicity_index]["fullAddress"],
+                                     json={"text": corrected_content})
+        except requests.exceptions.RequestException:
+            raise HTTPException(status_code=500, detail="Could not connect with toxicity detection service")
+
+    if not (response.status_code == 200):
+        HTTPException(status_code=500, detail="Could not connect with toxicity detection service")
+    toxicity = response.json()["toxic"]
+    return toxicity >= threshold
+
+
+@app.post("/send_message", response_model=schemas.DbMessage)
+def create_message(request: Request, input_message: InputMessage, db: Session = Depends(get_db)):
     if MESSAGING_AUTH.check_auth_token(request):
         message = Message(sender=MESSAGING_AUTH.user_id, **input_message.dict())
 
-        spellchecker_index += 1
-        spellchecker_index %= len(spellchecker_services)
-
-        response = requests.post(spellchecker_services[spellchecker_index]["fullAddress"],
-                                 json={"text": message.content})
-        if not (response.status_code == 200):
-            HTTPException(status_code=500, detail="Could not connect with spellchecker service")
-        corrected_content = response.json()["corrected_content"]
-
-        toxicity_index += 1
-        toxicity_index %= len(toxicity_services)
-
-        response = requests.post(toxicity_services[toxicity_index]["fullAddress"],
-                                 json={"text": corrected_content})
-        if not (response.status_code == 200):
-            HTTPException(status_code=500, detail="Could not connect with toxicity detection service")
-        toxicity = response.json()["toxic"]
-
-        if toxicity >= 0.5:
+        if check_if_toxic(message.content):
             raise HTTPException(status_code=403, detail="Message too toxic")
 
         return crud.create_message(db=db, message=message)
     raise HTTPException(status_code=403, detail="Invalid bearer auth token")
 
 
-@app.get("/messages", response_model=List[schemas.DbMessage])
+@app.post("/get_messages", response_model=List[schemas.DbMessage])
 def get_message(request: Request, timestamp_from: datetime, timestamp_to: Optional[datetime] = None,
                 db: Session = Depends(get_db)):
     if not MESSAGING_AUTH.check_auth_token(request):
@@ -90,6 +120,14 @@ def root():
     return MESSAGING_DISCOVERY.get_status_data()
 
 
+@app.post("/update")
+def update():
+    global toxicity_services
+    global spellchecker_services
+    toxicity_services = MESSAGING_DISCOVERY.get_service_addresses("ToxicityDetectionService")
+    spellchecker_services = MESSAGING_DISCOVERY.get_service_addresses("SpellcheckerService")
+
+
 if __name__ == "__main__":
     if not MESSAGING_DISCOVERY.check_connection():
         raise Exception("Discovery service unavailable")
@@ -105,8 +143,5 @@ if __name__ == "__main__":
     if not MESSAGING_AUTH.connect(auth_service_list[0]["fullAddress"]):
         raise Exception(f"Could not connect to auth service at:{auth_service_list[0]['fullAddress']}")
     print("Connection to auth service established")
-
-    toxicity_services = MESSAGING_DISCOVERY.get_service_addresses("ToxicityDetectionService")
-    spellchecker_services = MESSAGING_DISCOVERY.get_service_addresses("SpellcheckerService")
-
+    update()
     uvicorn.run(app, host=MESSAGING_SERVICE_HOST, port=MESSAGING_SERVICE_PORT)
