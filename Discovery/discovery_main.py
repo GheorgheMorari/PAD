@@ -1,13 +1,13 @@
 import threading
 import time
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 import requests
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from requests import Response
 
-from Discovery.domain.models import Service, RegistrationService
+from Discovery.domain.models import Service, RegistrationService, SubscriptionService
 from DiscoveryServiceUtils.discovery_comm import DEFAULT_DISCOVERY_SERVICE_PORT, DEFAULT_DISCOVERY_SERVICE_HOST
 
 # Constants
@@ -19,6 +19,7 @@ STATUS_ENTRYPOINT_NAME = "status"
 
 # Global variables
 services: List[Service] = []
+subscriptions: Dict[str, List[str]] = {}
 app = FastAPI()
 
 
@@ -75,7 +76,31 @@ def delete(request: Request, registration_service: RegistrationService):
         serviceName=registration_service.ServiceName)
     try:
         services.remove(service)
-    except:
+    except ValueError:
+        raise HTTPException(status_code=404)  # Service doesn't exist
+
+
+@app.post("/subscribe")
+def subscribe(request: Request, subscription_service: SubscriptionService):
+    if subscription_service.Host is None:
+        subscription_service.Host = request.client.host
+    full_address = f"http://{subscription_service.Host}:{subscription_service.Port}/"
+
+    if full_address in subscriptions:
+        raise HTTPException(status_code=409)  # Service already exists
+    else:
+        subscriptions[full_address] = subscription_service.ServiceNames
+
+
+@app.post("/unsubscribe")
+def unsubscribe(request: Request, subscription_service: SubscriptionService):
+    if subscription_service.Host is None:
+        subscription_service.Host = request.client.host
+    full_address = f"http://{subscription_service.Host}:{subscription_service.Port}/"
+
+    try:
+        del subscriptions[full_address]
+    except KeyError:
         raise HTTPException(status_code=404)  # Service doesn't exist
 
 

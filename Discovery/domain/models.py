@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel
 
@@ -12,3 +12,9 @@ class RegistrationService(BaseModel):
     Port: str
     Host: Optional[str]
     ServiceName: str
+
+
+class SubscriptionService(BaseModel):
+    Port: str
+    Host: Optional[str]
+    ServiceNames: List[str]

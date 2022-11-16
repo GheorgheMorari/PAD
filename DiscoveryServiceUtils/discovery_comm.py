@@ -72,3 +72,25 @@ class DiscoveryServiceComm:
             ret = list(filter(lambda service: service["serviceName"] == service_name, response_list))
 
         return ret
+
+    def subscribe(self, service_names: List[str]) -> bool:
+        body_dict = {"Port": self.status_data["Port"], "ServiceNames": service_names}
+
+        if "Host" in self.status_data:
+            body_dict["Host"] = self.status_data["Host"]
+
+        response = requests.post(self.discovery_service_address + "subscribe", json=body_dict)
+        self.status_code = response.status_code
+        return response.status_code == 200
+
+    def unsubscribe(self) -> bool:
+        body_dict = {"Port": self.status_data["Port"], "ServiceNames": []}
+        if "Host" in self.status_data:
+            body_dict["Host"] = self.status_data["Host"]
+
+        response = requests.post(self.discovery_service_address + "unsubscribe", json=body_dict)
+
+        self.status_code = response.status_code
+        return response.status_code == 200
+
+
