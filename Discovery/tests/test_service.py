@@ -1,5 +1,5 @@
 import requests
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
@@ -17,6 +17,12 @@ data = {
 @app.route('/status', methods=['GET', 'POST'])
 def main():
     return jsonify(data)
+
+
+@app.route("/subscribe", methods=["POST"])
+def subscribe():
+    print(request.json)
+    return "OK"
 
 
 if __name__ == "__main__":

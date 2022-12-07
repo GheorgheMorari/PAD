@@ -14,8 +14,11 @@ from DiscoveryServiceUtils.discovery_comm import DEFAULT_DISCOVERY_SERVICE_PORT,
 DISCOVERY_HOST = DEFAULT_DISCOVERY_SERVICE_HOST
 DISCOVERY_PORT = DEFAULT_DISCOVERY_SERVICE_PORT
 RUN_CHECK_ROUTINE = True
+RUN_SUBSCRIBE_ROUTINE = True
 CHECK_ROUTINE_DELAY_SECONDS = 5
+SUBSCRIBE_ROUTINE_DELAY_SECONDS = 5
 STATUS_ENTRYPOINT_NAME = "status"
+SUBSCRIPTION_ENTRYPOINT_NAME = "subscription"
 
 # Global variables
 services: List[Service] = []
@@ -35,6 +38,33 @@ def check_routine():
     while RUN_CHECK_ROUTINE:
         time.sleep(CHECK_ROUTINE_DELAY_SECONDS)
         check()
+
+
+def subscribe_routine():
+    update_subscribers()
+    while RUN_SUBSCRIBE_ROUTINE:
+        time.sleep(SUBSCRIBE_ROUTINE_DELAY_SECONDS)
+        update_subscribers()
+
+
+def update_subscribers():
+    services_by_name: Dict[str, List[str]] = {}
+    for service in services:
+        if service.serviceName in services_by_name:
+            services_by_name[service.serviceName].append(service.fullAddress)
+        else:
+            services_by_name[service.serviceName] = [service.fullAddress]
+
+    responses = [send_post(subscriber_address + SUBSCRIPTION_ENTRYPOINT_NAME) for subscriber_address in
+                 subscriptions.keys()]  # Send all requests one after another
+
+    offsets = 0
+    for i in range(len(responses)):  # Remove the services that did not connect or did not return 200
+        if not responses[i] or responses[i].status_code != 200:
+            print("removed service", services[i - offsets].serviceName, " at address: ",
+                  services[i - offsets].fullAddress)
+            del services[i - offsets]
+            offsets += 1
 
 
 @app.post("/")
@@ -105,8 +135,12 @@ def unsubscribe(request: Request, subscription_service: SubscriptionService):
 
 
 if __name__ == "__main__":
-    routine = threading.Thread(target=check_routine)
-    routine.daemon = True
-    routine.start()
+    check_routine_thread = threading.Thread(target=check_routine)
+    check_routine_thread.daemon = True
+    check_routine_thread.start()
+
+    subscribe_routine_thread = threading.Thread(target=update_subscribers)
+    subscribe_routine_thread.daemon = True
+    subscribe_routine_thread.start()
 
     uvicorn.run(app, host=DISCOVERY_HOST, port=DISCOVERY_PORT)
