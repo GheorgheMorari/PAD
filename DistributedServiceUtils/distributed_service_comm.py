@@ -29,8 +29,8 @@ class DistributedServiceComm:
         if address_index:
             return requests.post(self.service_address_list[address_index] + entrypoint, json=json_data)
 
-        response = requests.post(self.service_address_list[self.address_counter] + entrypoint, json=json_data)
         if self.access_type.round_robin:
             self.address_counter += 1
             self.address_counter %= len(self.service_address_list)
+        response = requests.post(self.service_address_list[self.address_counter] + entrypoint, json=json_data)
         return response
