@@ -7,3 +7,4 @@ email-validator
 passlib
 bcrypt
 requests
+uvicorn
