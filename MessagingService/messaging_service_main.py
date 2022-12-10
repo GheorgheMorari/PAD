@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from AuthServiceUtils.auth_comm import AUTH_SERVICE_NAME, AuthServiceComm
 from DiscoveryServiceUtils.discovery_comm import DiscoveryServiceComm
+from DistributedServiceUtils.distributed_service_comm import DistributedServiceComm
 from MessagingService.models import schemas
 from MessagingService.models.schemas import InputMessage, Message
 from sql_app import crud, models, database
@@ -35,57 +36,37 @@ def get_db():
 toxicity_services = []
 spellchecker_services = []
 cache_services = []
-spellchecker_index = 0
-toxicity_index = 0
+
+toxicity_comm = DistributedServiceComm(toxicity_services)
+spellchecker_comm = DistributedServiceComm(spellchecker_services)
+
+
+def high_availability_request_comm(comm: DistributedServiceComm, json_data: dict) -> Optional[requests.Response]:
+    response = None
+    try:
+        response = comm.send_post(json_data=json_data)
+    except requests.exceptions.RequestException:
+        update()  # Force update toxicity_services
+        try:
+            response = comm.send_post(json_data=json_data)
+        except requests.exceptions.RequestException:
+            return None
+
+    return response
 
 
 def check_if_toxic(text: str, threshold: float = 0.5) -> bool:
-    global toxicity_index
-    global spellchecker_index
-    if len(spellchecker_services) == 0:
-        update()
-        if len(spellchecker_services) == 0:
-            raise HTTPException(status_code=500, detail="Could not connect with spellchecker service")
-    if len(toxicity_services) == 0:
-        update()
-        if len(toxicity_services) == 0:
-            raise HTTPException(status_code=500, detail="Could not connect with toxicity detection service")
-
-    try:
-        response = requests.post(spellchecker_services[spellchecker_index]["fullAddress"],
-                                 json={"text": text})
-    except requests.exceptions.RequestException:
-        update()
-        try:
-            response = requests.post(spellchecker_services[spellchecker_index]["fullAddress"],
-                                     json={"text": text})
-        except requests.exceptions.RequestException:
-            raise HTTPException(status_code=500, detail="Could not connect with spellchecker service")
-
-    spellchecker_index += 1
-    spellchecker_index %= len(spellchecker_services)
-    if not (response.status_code == 200):
-        HTTPException(status_code=500, detail="Could not connect with spellchecker service")
+    response = high_availability_request_comm(spellchecker_comm, json_data={"text": text})
+    if response is None or response.status_code != 200:
+        raise HTTPException(status_code=500, detail="Could not connect with spellchecker service")
 
     corrected_content = response.json()["corrected_content"]
+    response = high_availability_request_comm(toxicity_comm, json_data={"text": corrected_content})
 
-    toxicity_index += 1
-    toxicity_index %= len(toxicity_services)
-
-    try:
-        response = requests.post(toxicity_services[toxicity_index]["fullAddress"],
-                                 json={"text": corrected_content})
-    except requests.exceptions.RequestException:
-        update()
-        try:
-            response = requests.post(toxicity_services[toxicity_index]["fullAddress"],
-                                     json={"text": corrected_content})
-        except requests.exceptions.RequestException:
-            raise HTTPException(status_code=500, detail="Could not connect with toxicity detection service")
-
-    if not (response.status_code == 200):
+    if response is None or response.status_code != 200:
         HTTPException(status_code=500, detail="Could not connect with toxicity detection service")
     toxicity = response.json()["toxic"]
+
     return toxicity >= threshold
 
 
@@ -131,13 +112,11 @@ def root():
 
 
 def update():
-    global toxicity_services
-    global spellchecker_services
-    global cache_services
-
-    toxicity_services = MESSAGING_DISCOVERY.get_service_addresses("ToxicityDetectionService")
-    spellchecker_services = MESSAGING_DISCOVERY.get_service_addresses("SpellcheckerService")
-    cache_services = MESSAGING_DISCOVERY.get_service_addresses("CacheService")
+    toxicity_services[:] = [x['fullAddress'] for x in
+                            MESSAGING_DISCOVERY.get_service_addresses("ToxicityDetectionService")]
+    spellchecker_services[:] = [x['fullAddress'] for x in
+                                MESSAGING_DISCOVERY.get_service_addresses("SpellcheckerService")]
+    cache_services[:] = [x['fullAddress'] for x in MESSAGING_DISCOVERY.get_service_addresses("CacheService")]
 
 
 def store_message_to_cache(message: schemas.DbMessage):
