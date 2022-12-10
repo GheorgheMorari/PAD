@@ -22,9 +22,9 @@ class DistributedServiceComm:
         self.address_counter = random.randint(0, len(self.service_address_list))
 
     def send_post(self, json_data: Optional[dict] = None, entrypoint="",
-                  address_index: Optional[int] = None) -> requests.Response:
-        if json_data is None:
-            json_data = dict()
+                  address_index: Optional[int] = None) -> Optional[requests.Response]:
+        if len(self.service_address_list) == 0:
+            return None
 
         if address_index:
             return requests.post(self.service_address_list[address_index] + entrypoint, json=json_data)
