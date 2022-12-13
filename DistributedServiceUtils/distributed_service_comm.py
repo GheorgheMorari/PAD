@@ -34,3 +34,17 @@ class DistributedServiceComm:
             self.address_counter %= len(self.service_address_list)
         response = requests.post(self.service_address_list[self.address_counter] + entrypoint, json=json_data)
         return response
+
+    def send_post_data(self, data: Optional[str] = None, entrypoint="", address_index: Optional[int] = None) -> \
+            Optional[requests.Response]:
+        if len(self.service_address_list) == 0:
+            return None
+
+        if address_index:
+            return requests.post(self.service_address_list[address_index] + entrypoint, data=data)
+
+        if self.access_type.round_robin:
+            self.address_counter += 1
+            self.address_counter %= len(self.service_address_list)
+        response = requests.post(self.service_address_list[self.address_counter] + entrypoint, data=data)
+        return response
