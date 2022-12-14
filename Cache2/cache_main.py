@@ -16,7 +16,7 @@ app = FastAPI()
 CACHE_STORAGE_TIME = timedelta(minutes=1)
 CACHE_DELETE_ROUTINE_DELAY_SECONDS = 20
 CACHE_SERVICE_HOST = os.getenv("CACHE_SERVICE_HOST", "127.0.0.1")
-CACHE_SERVICE_PORT = 8079
+CACHE_SERVICE_PORT = 8078
 CACHE_SERVICE_NAME = "CacheService"
 CACHE_DISCOVERY = DiscoveryServiceComm(service_name=CACHE_SERVICE_NAME,
                                        port=str(CACHE_SERVICE_PORT), host=CACHE_SERVICE_HOST)

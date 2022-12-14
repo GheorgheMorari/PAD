@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-const discoveryHost = "http://127.0.0.1"
+const discoveryHost = "http://host.docker.internal"
 const discoveryPort = "6969"
 
 const UpdateServicesRoutine = false

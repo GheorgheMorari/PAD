@@ -1,4 +1,5 @@
 sqlalchemy
 pydantic
 uvicorn
+fastapi
 requests

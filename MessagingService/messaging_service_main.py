@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime
 from typing import List, Optional
 
@@ -7,20 +8,21 @@ import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from AuthServiceUtils.auth_comm import AUTH_SERVICE_NAME, AuthServiceComm
-from DiscoveryServiceUtils.discovery_comm import DiscoveryServiceComm
-from DistributedServiceUtils.distributed_service_comm import DistributedServiceComm
+from MessagingService.auth_comm import AUTH_SERVICE_NAME, AuthServiceComm
+from MessagingService.discovery_comm import DiscoveryServiceComm
+from MessagingService.distributed_service_comm import DistributedServiceComm, AccessType
 from MessagingService.models import schemas
 from MessagingService.models.schemas import InputMessage, Message
-from sql_app import crud, models, database
+from MessagingService.sql_app import crud, models, database
 
 models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI()
-MESSAGING_SERVICE_HOST = "127.0.0.1"
+MESSAGING_SERVICE_HOST = os.getenv("MESSAGING_SERVICE_HOST", "127.0.0.1")
 MESSAGING_SERVICE_PORT = 8069
 MESSAGING_SERVICE_NAME = "MessagingService"
-MESSAGING_DISCOVERY = DiscoveryServiceComm(service_name=MESSAGING_SERVICE_NAME, port=str(MESSAGING_SERVICE_PORT))
+MESSAGING_DISCOVERY = DiscoveryServiceComm(service_name=MESSAGING_SERVICE_NAME, port=str(MESSAGING_SERVICE_PORT),
+                                           host=MESSAGING_SERVICE_HOST)
 MESSAGING_AUTH = AuthServiceComm()
 
 
@@ -39,6 +41,7 @@ cache_services = []
 
 toxicity_comm = DistributedServiceComm(toxicity_services)
 spellchecker_comm = DistributedServiceComm(spellchecker_services)
+cache_comm = DistributedServiceComm(cache_services, access_type=AccessType.choose_one)
 
 
 def high_availability_request_comm(comm: DistributedServiceComm, json_data: dict) -> Optional[requests.Response]:
@@ -118,6 +121,10 @@ def update():
                                 MESSAGING_DISCOVERY.get_service_addresses("SpellcheckerService")]
     cache_services[:] = [x['fullAddress'] for x in MESSAGING_DISCOVERY.get_service_addresses("CacheService")]
 
+    cache_comm.reset_counter()
+    toxicity_comm.reset_counter()
+    spellchecker_comm.reset_counter()
+
 
 def store_message_to_cache(message: schemas.DbMessage):
     if len(cache_services) == 0:
@@ -126,14 +133,15 @@ def store_message_to_cache(message: schemas.DbMessage):
             return
 
     try:
-        response = requests.post(cache_services[0]["fullAddress"],
-                                 data=f'store<__-__>{json.dumps(message.dict(), default=str)}')
-    except requests.exceptions.RequestException:
+        response = cache_comm.send_post_data(
+            data=f'store<__-__>{json.dumps(message.dict(), default=str)}')
+    except:
         update()
         try:
-            response = requests.post(cache_services[0]["fullAddress"],
-                                     data=f'store<__-__>{json.dumps(message.dict(), default=str)}')
-        except requests.exceptions.RequestException:
+            response = cache_comm.send_post_data(
+                data=f'store<__-__>{json.dumps(message.dict(), default=str)}')
+
+        except:
             return
     #
     # if not (response.status_code == 200):
@@ -146,19 +154,19 @@ def get_messages_from_cache(participant: str, timestamp_from: datetime, timestam
         update()
         if len(cache_services) == 0:
             return []
-            # raise HTTPException(status_code=500, detail="Could not connect with cache service")
     try:
-        response = requests.post(cache_services[0]["fullAddress"],
-                                 data=f'get<__-__>{json.dumps({"participant": participant, "timestamp_from": str(timestamp_from), "timestamp_to": str(timestamp_to)})}')
-    except requests.exceptions.RequestException:
+        response = cache_comm.send_post_data(
+            data=f'get<__-__>{json.dumps({"participant": participant, "timestamp_from": str(timestamp_from), "timestamp_to": str(timestamp_to)})}')
+    except:
         update()
+        cache_comm.reset_counter()
         try:
-            response = requests.post(cache_services[0]["fullAddress"],
-                                     data=f'get<__-__>{json.dumps({"participant": participant, "timestamp_from": str(timestamp_from), "timestamp_to": str(timestamp_to)})}')
-        except requests.exceptions.RequestException:
+            response = cache_comm.send_post_data(
+                data=f'get<__-__>{json.dumps({"participant": participant, "timestamp_from": str(timestamp_from), "timestamp_to": str(timestamp_to)})}')
+        except:
             return []
 
-    if not (response.status_code == 200):
+    if (response is None) or (response.status_code != 200):
         return []
     response_dict_list = response.json()
 
@@ -170,20 +178,20 @@ def get_messages_from_cache(participant: str, timestamp_from: datetime, timestam
     return ret
 
 
+if not MESSAGING_DISCOVERY.check_connection():
+    raise Exception("Discovery service unavailable")
+
+if not MESSAGING_DISCOVERY.register_force():
+    raise Exception(f"Registration unsuccessful, Status code:{MESSAGING_DISCOVERY.get_status_code()}")
+print("Registration successful")
+
+auth_service_list = MESSAGING_DISCOVERY.get_service_addresses(AUTH_SERVICE_NAME)
+if len(auth_service_list) == 0:
+    raise Exception("No auth service was registered")
+
+if not MESSAGING_AUTH.connect(auth_service_list[0]["fullAddress"]):
+    raise Exception(f"Could not connect to auth service at:{auth_service_list[0]['fullAddress']}")
+print("Connection to auth service established")
+update()
 if __name__ == "__main__":
-    if not MESSAGING_DISCOVERY.check_connection():
-        raise Exception("Discovery service unavailable")
-
-    if not MESSAGING_DISCOVERY.register_force():
-        raise Exception(f"Registration unsuccessful, Status code:{MESSAGING_DISCOVERY.get_status_code()}")
-    print("Registration successful")
-
-    auth_service_list = MESSAGING_DISCOVERY.get_service_addresses(AUTH_SERVICE_NAME)
-    if len(auth_service_list) == 0:
-        raise Exception("No auth service was registered")
-
-    if not MESSAGING_AUTH.connect(auth_service_list[0]["fullAddress"]):
-        raise Exception(f"Could not connect to auth service at:{auth_service_list[0]['fullAddress']}")
-    print("Connection to auth service established")
-    update()
     uvicorn.run(app, host=MESSAGING_SERVICE_HOST, port=MESSAGING_SERVICE_PORT)

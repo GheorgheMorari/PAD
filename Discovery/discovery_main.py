@@ -8,11 +8,10 @@ from fastapi import FastAPI, HTTPException, Request
 from requests import Response
 
 from Discovery.domain.models import Service, RegistrationService, SubscriptionService
-from DiscoveryServiceUtils.discovery_comm import DEFAULT_DISCOVERY_SERVICE_PORT, DEFAULT_DISCOVERY_SERVICE_HOST
 
 # Constants
-DISCOVERY_HOST = DEFAULT_DISCOVERY_SERVICE_HOST
-DISCOVERY_PORT = DEFAULT_DISCOVERY_SERVICE_PORT
+DISCOVERY_HOST = "127.0.0.1"
+DISCOVERY_PORT = 6969
 RUN_CHECK_ROUTINE = True
 CHECK_ROUTINE_DELAY_SECONDS = 5
 STATUS_ENTRYPOINT_NAME = "status"
@@ -104,9 +103,8 @@ def unsubscribe(request: Request, subscription_service: SubscriptionService):
         raise HTTPException(status_code=404)  # Service doesn't exist
 
 
+routine = threading.Thread(target=check_routine)
+routine.daemon = True
+routine.start()
 if __name__ == "__main__":
-    routine = threading.Thread(target=check_routine)
-    routine.daemon = True
-    routine.start()
-
     uvicorn.run(app, host=DISCOVERY_HOST, port=DISCOVERY_PORT)

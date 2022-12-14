@@ -1,5 +1,4 @@
-pyspellchecker
-pydantic
 uvicorn
 fastapi
+pydantic
 requests

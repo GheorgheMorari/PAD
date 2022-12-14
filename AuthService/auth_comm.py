@@ -1,8 +1,11 @@
+import os
+
 import fastapi
 import requests
 
 AUTH_SERVICE_NAME = "AuthService"
-AUTH_SERVICE_DEFAULT_ADDRESS = "http://127.0.0.1:8081/"
+AUTH_SERVICE_DEFAULT_HOST = os.getenv("AUTH_SERVICE_DEFAULT_HOST", "127.0.0.1")
+AUTH_SERVICE_DEFAULT_ADDRESS = f"http://{AUTH_SERVICE_DEFAULT_HOST}:8081/"
 
 
 class AuthServiceComm:

@@ -1,8 +1,9 @@
+import os
 from typing import Optional, List, TypedDict
 
 import requests
 
-DEFAULT_DISCOVERY_SERVICE_HOST = "127.0.0.1"
+DEFAULT_DISCOVERY_SERVICE_HOST = os.getenv("DEFAULT_DISCOVERY_SERVICE_HOST", "127.0.0.1")
 DEFAULT_DISCOVERY_SERVICE_PORT = 6969
 DEFAULT_DISCOVERY_SERVICE_ADDRESS = F"http://{DEFAULT_DISCOVERY_SERVICE_HOST}:{DEFAULT_DISCOVERY_SERVICE_PORT}/"
 
@@ -92,5 +93,3 @@ class DiscoveryServiceComm:
 
         self.status_code = response.status_code
         return response.status_code == 200
-
-

@@ -9,7 +9,7 @@ from SpellcheckerService.spellchecker_adapter import predict_misspelling
 
 app = FastAPI()
 SPELLCHECKER_SERVICE_HOST = os.getenv("SPELLCHECKER_SERVICE_HOST", "127.0.0.1")
-SPELLCHECKER_SERVICE_PORT = os.getenv("PORT", 8082)
+SPELLCHECKER_SERVICE_PORT = os.getenv("PORT", 8083)
 SPELLCHECKER_SERVICE_NAME = "SpellcheckerService"
 SPELLCHECKER_DISCOVERY = DiscoveryServiceComm(service_name=SPELLCHECKER_SERVICE_NAME,
                                               port=str(SPELLCHECKER_SERVICE_PORT), host=SPELLCHECKER_SERVICE_HOST)
